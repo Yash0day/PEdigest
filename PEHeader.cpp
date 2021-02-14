@@ -15,7 +15,7 @@ int main() {
     
 
         //Open the Exe File 
-        HANDLE h_File = CreateFile(L"HxDSetup.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        HANDLE h_File = CreateFile(L"Sample.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
         if (!h_File) { 
             printf("\nERROR : Could not open the file specified\n"); 
