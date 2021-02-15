@@ -9,13 +9,13 @@ int main() {
     LPVOID lpBase;                      //Pointer to the base memory of mapped file
     PIMAGE_DOS_HEADER dosHeader;        //Pointer to DOS Header
     PIMAGE_NT_HEADERS ntHeader;         //Pointer to NT Header
-    IMAGE_FILE_HEADER header;           //Pointer to image file header of NT Header 
+    IMAGE_FILE_HEADER fileHeader;           //Pointer to image file header of NT Header 
     IMAGE_OPTIONAL_HEADER opHeader;     //Optional Header of PE files present in NT Header structure
     PIMAGE_SECTION_HEADER pSecHeader;   //Section Header or Section Table Header
     
 
         //Open the Exe File 
-        HANDLE h_File = CreateFile(L"Sample.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        HANDLE h_File = CreateFile(L"HxDSetup.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
         if (!h_File) { 
             printf("\nERROR : Could not open the file specified\n"); 
@@ -40,7 +40,7 @@ int main() {
         }
         else printf("File is not a Windows Compatible Executable\n");
 
-        printf("xxxPORTABLE EXECUTABLE DOS HEADERxxx\n");
+        printf("\nxxxxxxxIMAGE DOS HEADERxxxxxxx\n");
         printf("Magic number - %X\n",dosHeader->e_magic);         // Magic number
         printf("Bytes on last page of file - %X\n", dosHeader->e_cblp);          // Bytes on last page of file
         printf("Pages in file - %X\n", dosHeader->e_cp);            // Pages in file
@@ -61,4 +61,18 @@ int main() {
         printf("Reserved words - %X\n", dosHeader->e_res2[10]);      // Reserved words
         printf("IMAGE NT HEADER offset(Relative Address) - %X\n", dosHeader->e_lfanew);        // File address of new exe header
         
+        ntHeader = PIMAGE_NT_HEADERS((DWORD)lpBase + dosHeader->e_lfanew);
+        
+        printf("\nxxxxxxxIMAGE NT HEADERxxxxxxx\n");
+        printf("ntHeader base offset: %X\n", (ntHeader)); //
+        printf("Signature: %X\n", ntHeader->Signature); // 0x4550 ~ PE
+
+        printf("\t+++++++IMAGE FILE HEADER+++++++\n");
+        printf("\tMachine Architecture -  %X\n", ntHeader->FileHeader.Machine);  //0x014c ~ x86 architecture
+        printf("\tNumberOfSections - %X\n", ntHeader->FileHeader.NumberOfSections);
+        printf("\tTimeDateStamp - %X\n", ntHeader->FileHeader.TimeDateStamp);
+        printf("\tPointerToSymbolTable - %X\n", ntHeader->FileHeader.PointerToSymbolTable);
+        printf("\tNumberOfSymbols - %X\n", ntHeader->FileHeader.NumberOfSymbols);
+        printf("\tSizeOfOptionalHeader - %X\n", ntHeader->FileHeader.SizeOfOptionalHeader);
+        printf("\tCharacteristics - %X\n", ntHeader->FileHeader.Characteristics);
 }
