@@ -109,4 +109,12 @@ int main() {
         printf("\tThe number of directory entries in the remainder of the optional header - %X\n", ntHeader->OptionalHeader.NumberOfRvaAndSizes);
 
         printf("\n\t\t+++++++IMAGE DATA DIRECTORY+++++++\n");
+
+        int i;
+        for (i = 0;i < ntHeader->OptionalHeader.NumberOfRvaAndSizes;i++) {
+            printf("\n\t\t%d Data Directory: %X", i, ntHeader->OptionalHeader.DataDirectory[i]);
+        }
+        
+
+
 }
