@@ -1,21 +1,18 @@
 #include<stdio.h> 
 #include<windows.h>
-#include<time.h>
-#include<tchar.h>
 #include<winnt.h>
+#include<winternl.h>
+#include <iostream>
+#include<string>
 
-int main() {
+int PEHeader_() {
 
-    LPVOID lpBase;                      //Pointer to the base memory of mapped file
-    PIMAGE_DOS_HEADER dosHeader;        //Pointer to DOS Header
-    PIMAGE_NT_HEADERS ntHeader;         //Pointer to NT Header
-    IMAGE_FILE_HEADER fileHeader;           //Pointer to image file header of NT Header 
-    IMAGE_OPTIONAL_HEADER32 opHeader;     //Optional Header of PE files present in NT Header structure
-    PIMAGE_SECTION_HEADER pSecHeader;   //Section Header or Section Table Header
+    PIMAGE_IMPORT_DESCRIPTOR importImageDescriptor; //dll module
+    PIMAGE_IMPORT_DESCRIPTOR id;
+    PIMAGE_THUNK_DATA thunk_data;
 
-
-        //Open the Exe File 
-    HANDLE h_File = CreateFile(L"HxDSetup.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    //Open the Exe File 
+    HANDLE h_File = CreateFile(L"Project1.exe", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (!h_File) {
         printf("\nERROR : Could not open the file specified\n");
@@ -23,104 +20,72 @@ int main() {
 
     //Mapping Given EXE file to Memory
     HANDLE hMapObject = CreateFileMapping(h_File, NULL, PAGE_READONLY, 0, 0, NULL);
-    lpBase = MapViewOfFile(hMapObject, FILE_MAP_READ, 0, 0, 0);
+    LPVOID basepointer = (char*)MapViewOfFile(hMapObject, FILE_MAP_READ, 0, 0, 0);
 
-    long int filesize = GetFileSize(h_File, NULL);
+    //PIMAGE_DOS_HEADER dos_header;        
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)basepointer;
+    printf("Magic number - %X\n", dos_header->e_magic);
 
-    printf("File size is %lu\n", filesize);
-    printf("Base Virtual Address %lu\n", lpBase);
+    printf("DOS HEADER: IMAGE NT HEADER offset(Relative Address) - %X\n", dos_header->e_lfanew);  //DOS header working fine...
 
-    //DOS Header: First 64 bytes
-    dosHeader = (PIMAGE_DOS_HEADER)lpBase; // 0x04000000
+    //PIMAGE_NT_HEADERS ntHeader;         
+    PIMAGE_NT_HEADERS nt_header = (PIMAGE_NT_HEADERS)((DWORD)basepointer + dos_header->e_lfanew);
+    printf("NT HEADER: Signature %x\n", nt_header->Signature);
 
-    //printf("%X", dosHeader->e_magic);
+    PIMAGE_FILE_HEADER file_header = (PIMAGE_FILE_HEADER)((DWORD)basepointer + dos_header->e_lfanew + sizeof(nt_header->Signature));
+    printf("FILE HEADER: Machine %x\n", file_header->Machine);
 
-    if (dosHeader->e_magic == 0x5a4d) { // MZ //
-        printf("[+] Windows Executable File\n");
-    }
-    else printf("File is not a Windows Compatible Executable\n");
+    PIMAGE_OPTIONAL_HEADER optional_header = (PIMAGE_OPTIONAL_HEADER)((DWORD)basepointer + dos_header->e_lfanew + sizeof(nt_header->Signature) + sizeof(nt_header->FileHeader));
+    printf("OPTIONAL HEADER: Image Base %x\n", optional_header->ImageBase);
 
-    printf("\nxxxxxxxIMAGE DOS HEADERxxxxxxx\n\n");
-    printf("Magic number - %X\n", dosHeader->e_magic);         // Magic number
-    printf("Bytes on last page of file - %X\n", dosHeader->e_cblp);          // Bytes on last page of file
-    printf("Pages in file - %X\n", dosHeader->e_cp);            // Pages in file
-    printf("Relocations - %X\n", dosHeader->e_crlc);          // Relocations
-    printf("Size of header in paragraphs - %X\n", dosHeader->e_cparhdr);       // Size of header in paragraphs
-    printf("Minimum extra paragraphs needed - %X\n", dosHeader->e_minalloc);      // Minimum extra paragraphs needed
-    printf("Maximum extra paragraphs needed - %X\n", dosHeader->e_maxalloc);      // Maximum extra paragraphs needed
-    printf("Initial (relative) SS value - %X\n", dosHeader->e_ss);            // Initial (relative) SS value
-    printf("Initial SP value - %X\n", dosHeader->e_sp);            // Initial SP value
-    printf("Checksum - %X\n", dosHeader->e_csum);          // Checksum
-    printf("Initial IP value - %X\n", dosHeader->e_ip);            // Initial IP value
-    printf("Initial (relative) CS value - %X\n", dosHeader->e_cs);            // Initial (relative) CS value
-    printf("File address of relocation table - %X\n", dosHeader->e_lfarlc);        // File address of relocation table
-    printf("Overlay number - %X\n", dosHeader->e_ovno);          // Overlay number
-    printf("Reserved words - %X\n", dosHeader->e_res[4]);        // Reserved words
-    printf("OEM identifier (for e_oeminfo) - %X\n", dosHeader->e_oemid);         // OEM identifier (for e_oeminfo)
-    printf("OEM information; e_oemid specific - %X\n", dosHeader->e_oeminfo);       // OEM information; e_oemid specific
-    printf("Reserved words - %X\n", dosHeader->e_res2[10]);      // Reserved words
-    printf("IMAGE NT HEADER offset(Relative Address) - %X\n", dosHeader->e_lfanew);        // File address of new exe header
+    PIMAGE_SECTION_HEADER section_header = (PIMAGE_SECTION_HEADER)((DWORD)basepointer + dos_header->e_lfanew + sizeof(nt_header->Signature) + sizeof(nt_header->FileHeader) + sizeof(nt_header->OptionalHeader));
+    DWORD numberofsections = file_header->NumberOfSections;
+    printf("Section Header: Number of Sections %x\n", file_header->NumberOfSections);
 
-    ntHeader = PIMAGE_NT_HEADERS((DWORD)lpBase + dosHeader->e_lfanew);
-
-    printf("\nxxxxxxxIMAGE NT HEADERxxxxxxx\n\n");
-    printf("nt Header base offset: %X\n", (ntHeader)); //
-    printf("Signature: %X\n", ntHeader->Signature); // 0x4550 ~ PE
-
-    printf("\n\t+++++++IMAGE FILE HEADER+++++++\n");
-    printf("\n\tMachine Architecture -  %X\n", ntHeader->FileHeader.Machine);  // 0x014c ~ x86 architecture
-    printf("\tNumberOfSections - %X\n", ntHeader->FileHeader.NumberOfSections);
-    printf("\tTimeDateStamp - %X\n", ntHeader->FileHeader.TimeDateStamp);
-    printf("\tPointerToSymbolTable - %X\n", ntHeader->FileHeader.PointerToSymbolTable);
-    printf("\tNumberOfSymbols - %X\n", ntHeader->FileHeader.NumberOfSymbols);
-    printf("\tSizeOfOptionalHeader - %X\n", ntHeader->FileHeader.SizeOfOptionalHeader);
-    printf("\tCharacteristics - %X\n", ntHeader->FileHeader.Characteristics);
-
-    printf("\n\t+++++++IMAGE OPTIONAL HEADER+++++++\n");
-    printf("\n\tMagic Number - %X\n", ntHeader->OptionalHeader.Magic); // 0x10b - File is an executable image
-    printf("\tThe major version number of the linker - %X\n", ntHeader->OptionalHeader.MajorLinkerVersion);
-    printf("\tThe minor version number of the linker - %X\n", ntHeader->OptionalHeader.MinorLinkerVersion);
-    printf("\tThe size of the code section - %X\n", ntHeader->OptionalHeader.SizeOfCode);
-    printf("\tThe size of the initialized data section - %X\n", ntHeader->OptionalHeader.SizeOfInitializedData);
-    printf("\tThe size of the uninitialized data section - %X\n", ntHeader->OptionalHeader.SizeOfUninitializedData);
-    printf("\tPointer to Entry Point of EXE - %X\n", ntHeader->OptionalHeader.AddressOfEntryPoint);
-    printf("\tpointer to the beginning of the code section - %X\n", ntHeader->OptionalHeader.BaseOfCode);
-    printf("\tpointer to the beginning of the data section - %X\n", ntHeader->OptionalHeader.BaseOfData);
-    printf("\tfirst byte of the image when it is loaded in memory - %X\n", ntHeader->OptionalHeader.ImageBase);
-    printf("\tThe alignment of sections loaded in memory - %X\n", ntHeader->OptionalHeader.SectionAlignment);
-    printf("\tThe alignment of the raw data of sections in the image file - %X\n", ntHeader->OptionalHeader.FileAlignment);
-    printf("\tThe major version number of the required operating system - %X\n", ntHeader->OptionalHeader.MajorOperatingSystemVersion);
-    printf("\tThe minor version number of the required operating system - %X\n", ntHeader->OptionalHeader.MinorOperatingSystemVersion);
-    printf("\tMajor Image Version - %X\n", ntHeader->OptionalHeader.MajorImageVersion);
-    printf("\tMinor Image Version - %X\n", ntHeader->OptionalHeader.MinorImageVersion);
-    printf("\tMajor Subsystem Version - %X\n", ntHeader->OptionalHeader.MajorSubsystemVersion);
-    printf("\tMinor Subsystem Version - %X\n", ntHeader->OptionalHeader.MinorSubsystemVersion);
-    printf("\tWin32 Version Value - %X\n", ntHeader->OptionalHeader.Win32VersionValue);
-    printf("\tThe size of the image - %X\n", ntHeader->OptionalHeader.SizeOfImage);
-    printf("\tThe combined size of all the Headers - %X\n", ntHeader->OptionalHeader.SizeOfHeaders);
-    printf("\tThe size of the image - %X\n", ntHeader->OptionalHeader.CheckSum);
-    printf("\tThe subsystem required to run this image - %X\n", ntHeader->OptionalHeader.Subsystem);
-    printf("\tThe DLL characteristics of the image - %X\n", ntHeader->OptionalHeader.DllCharacteristics);
-    printf("\tThe number of bytes to reserve for the stack - %X\n", ntHeader->OptionalHeader.SizeOfStackReserve);
-    printf("\tThe number of bytes to commit for the stack - %X\n", ntHeader->OptionalHeader.SizeOfStackCommit);
-    printf("\tThe number of bytes to reserve for the local heap - %X\n", ntHeader->OptionalHeader.SizeOfHeapReserve);
-    printf("\tThe number of bytes to commit for the local heap - %X\n", ntHeader->OptionalHeader.SizeOfHeapCommit);
-    printf("\tLoader Flags - %X\n", ntHeader->OptionalHeader.LoaderFlags);
-    printf("\tThe number of directory entries in the remainder of the optional header - %X\n", ntHeader->OptionalHeader.NumberOfRvaAndSizes);
-
-    printf("\n\t\t+++++++IMAGE DATA DIRECTORY+++++++\n");
-
-
-    for (int i = 0;i < ntHeader->OptionalHeader.NumberOfRvaAndSizes;i++) {
-        printf("\n\t\t%d) Data Directory -> ", i);
-        printf("\n\t\tThe relative virtual address of the table %X", ntHeader->OptionalHeader.DataDirectory[i].VirtualAddress);
-        printf("\n\t\tThe size of the table %X\n", ntHeader->OptionalHeader.DataDirectory[i].Size);
+    for (int j = 0; j < optional_header->NumberOfRvaAndSizes;j++) {
+        printf("Data Directory: Virtual Address: %x\t\n", optional_header->DataDirectory[j].VirtualAddress);
     }
 
-    printf("\n\n\t\t+++++++SECTIONS HEADERS+++++++\n");
-    DWORD sectionbase_addr; //Pointer to first section
-    sectionbase_addr = (DWORD)ntHeader + sizeof(DWORD) + (DWORD)(ntHeader->FileHeader.SizeOfOptionalHeader) + (DWORD)sizeof(fileHeader);
+    DWORD RVAimport_directory = nt_header->OptionalHeader.DataDirectory[1].VirtualAddress;
+    //printf("RVAimport_directory %x", RVAimport_directory);
 
-    printf("\n\n\t\t\t\t Base Address of Sections: %lu", sectionbase_addr);
+    PIMAGE_SECTION_HEADER import_section = {};
+    for (int i = 1; i <= numberofsections; i++, section_header++) {
+        printf("Section Header: Section Name %s\n", section_header->Name);
 
+        if (RVAimport_directory >= section_header->VirtualAddress && RVAimport_directory < section_header->VirtualAddress + section_header->Misc.VirtualSize) {
+
+            import_section = section_header;
+        }
+        //section_header += (DWORD)sizeof(PIMAGE_SECTION_HEADER);
+    }
+
+    DWORD import_table_base_offset = (DWORD)basepointer + import_section->PointerToRawData;
+
+    importImageDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)(import_table_base_offset + (nt_header->OptionalHeader.DataDirectory[1].VirtualAddress - import_section->VirtualAddress));
+
+    //DLL Imports
+    for (;importImageDescriptor->Name != 0; importImageDescriptor++) {
+        DWORD Imported_DLL = import_table_base_offset + (importImageDescriptor->Name - import_section->VirtualAddress);
+        printf("\n[+]Imported DLLs: %s\n", Imported_DLL);
+
+        DWORD thunk = importImageDescriptor->FirstThunk;
+        PIMAGE_THUNK_DATA thunk_data = (PIMAGE_THUNK_DATA)(import_table_base_offset + (thunk - import_section->VirtualAddress));
+
+        for (;thunk_data->u1.AddressOfData != 0; thunk_data++) {
+            if (thunk_data->u1.AddressOfData > 0x80000000) {
+                printf("\n\tOrdinal: %x", (WORD)thunk_data->u1.AddressOfData);
+            }
+            else {
+                DWORD functionname = import_table_base_offset + (thunk_data->u1.AddressOfData - (import_section->VirtualAddress - 2));
+                printf("\n\tFunction Name: %s", functionname);
+            }
+        }
+    }
+    return 0;
+}
+
+int main() {
+    PEHeader_();
+    return 1;
 }
