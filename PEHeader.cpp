@@ -2,17 +2,20 @@
 #include<windows.h>
 #include<winnt.h>
 #include<winternl.h>
-#include <iostream>
+#include<iostream>
 #include<string>
 
+using namespace std;
+string arg1;
 
-std::wstring file = L"C:/Users/Boyka/Desktop/Project1.exe";
-std::wstring filetest = L"C:/Users/Boyka/Desktop/m.PNG"; 
+std::wstring file = L"C:/Users/Boyka/Desktop/HxDSetup.exe"; 
 
 int PEHeader_() {
-
-    HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
+  
+    
+    HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    //HANDLE h_File = CreateFileW(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    
     if (!h_File) {
         printf("\nERROR : Could not open the file specified!!!\n");
     }
@@ -143,7 +146,7 @@ int PEHeader_() {
     DWORD import_table_base_offset = (DWORD)basepointer + import_section->PointerToRawData;
 
     PIMAGE_IMPORT_DESCRIPTOR importImageDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)(import_table_base_offset + (nt_header->OptionalHeader.DataDirectory[1].VirtualAddress - import_section->VirtualAddress));
-
+   
     //DLL Imports
     for (;importImageDescriptor->Name != 0; importImageDescriptor++) {
         DWORD Imported_DLL = import_table_base_offset + (importImageDescriptor->Name - import_section->VirtualAddress);
@@ -165,8 +168,9 @@ int PEHeader_() {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
    
     PEHeader_();
+    
     return 1;
 }
