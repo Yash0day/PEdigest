@@ -10,12 +10,14 @@ string arg1;
 
 std::wstring file = L"C:/Users/Boyka/Desktop/HxDSetup.exe"; 
 
-int PEHeader_() {
-  
-    
-    HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    //HANDLE h_File = CreateFileW(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    
+int PEHeader_(wstring s) {  
+    std::wstring userinput = s;
+
+    //HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); Working Correctly
+    HANDLE h_File = CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    cout << typeid(s).name();
+
+
     if (!h_File) {
         printf("\nERROR : Could not open the file specified!!!\n");
     }
@@ -169,8 +171,12 @@ int PEHeader_() {
 }
 
 int main() {
-   
-    PEHeader_();
+    
+    wstring s = L"";
+    cout << "File Name with full Path: "; 
+    wcin >> s;
+    
+    PEHeader_(s);
     
     return 1;
 }
