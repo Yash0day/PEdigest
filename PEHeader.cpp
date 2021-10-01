@@ -10,7 +10,7 @@ string arg1;
 
 std::wstring file = L"C:/Users/Boyka/Desktop/HxDSetup.exe"; 
 
-int PEHeader_(wstring s) {  
+DWORD PEHeader_(wstring s) {  
     std::wstring userinput = s;
 
     //HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); Working Correctly
@@ -167,16 +167,31 @@ int PEHeader_(wstring s) {
             }
         }
     }
-    return 0;
+    return h_File;
 }
 
 int main() {
     
     wstring s = L"";
-    cout << "File Name with full Path: "; 
-    wcin >> s;
+    std::wcout << "File Name with full Path: "; 
+    std::wcin >> s;
     
-    PEHeader_(s);
+    std::wcout << "[ ] Options: \n"; 
+    std::wcout << "[1] PE Headers in Verbose Mode \n";
+    std::wcout << "[2] Coming Soon....... \n";
+
+    int op; 
+    std::cin >> op; 
+
+        switch (op)
+        {
+        case 1:
+            PEHeader_(s);
+        case 2:
+            cout << "Coming Soon...";
+        }
+    
+    //PEHeader_(s);
     
     return 1;
 }
