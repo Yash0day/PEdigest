@@ -10,13 +10,12 @@ string arg1;
 
 std::wstring file = L"C:/Users/Boyka/Desktop/HxDSetup.exe"; 
 
-DWORD PEHeader_(wstring s) {  
+int PEHeader_(wstring s) {  
     std::wstring userinput = s;
 
-    //HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); Working Correctly
+    //HANDLE h_File = CreateFileW(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); 
     HANDLE h_File = CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    cout << typeid(s).name();
-
+    
 
     if (!h_File) {
         printf("\nERROR : Could not open the file specified!!!\n");
@@ -53,20 +52,20 @@ DWORD PEHeader_(wstring s) {
     printf("\tInitial (relative) CS value - %X\n", dos_header->e_cs);
     printf("\tFile address of relocation table - %X\n", dos_header->e_lfarlc);
     printf("\tOverlay number - %X\n", dos_header->e_ovno);
-    printf("\tReserved words - %X\n", dos_header->e_res[4]);
+    //printf("\tReserved words - %X\n", dos_header->e_res[4]);
     printf("\tOEM identifier (for e_oeminfo) - %X\n", dos_header->e_oemid);
     printf("\tOEM information; e_oemid specific - %X\n", dos_header->e_oeminfo);
-    printf("\tReserved words - %X\n", dos_header->e_res2[10]);
+    //printf("\tReserved words - %X\n", dos_header->e_res2[10]);
     
 
     printf("\tDOS HEADER: IMAGE NT HEADER offset(Relative Address) - %X\n", dos_header->e_lfanew);  
 
     //PIMAGE_NT_HEADERS ntHeaders   
-    PIMAGE_NT_HEADERS nt_header = (PIMAGE_NT_HEADERS)((DWORD)basepointer + dos_header->e_lfanew);
+    PIMAGE_NT_HEADERS nt_header = (PIMAGE_NT_HEADERS)((DWORD)basepointer + (DWORD)dos_header->e_lfanew);
 
     printf("\n[ . ]Image NT headers:\n");
-    printf("\tNT HEADER: Signature 'PE: 5045' : %x\n", nt_header->Signature);
-
+    printf("\tNT HEADER: Signature 'PE: 5045' : %d\n", nt_header->Signature);
+    
     PIMAGE_FILE_HEADER file_header = (PIMAGE_FILE_HEADER)((DWORD)basepointer + dos_header->e_lfanew + sizeof(nt_header->Signature));
     
     if (file_header->Machine != IMAGE_FILE_MACHINE_I386) {
@@ -97,7 +96,7 @@ DWORD PEHeader_(wstring s) {
     printf("\tThe size of the uninitialized data section (BSS): %x\n", optional_header->SizeOfUninitializedData);
     printf("\tThe address of the entry point relative to the image base: %x\n", optional_header->AddressOfEntryPoint);
     printf("\tThe address that is relative to the image base of the beginning-of-code section: %x\n", optional_header->BaseOfCode);
-    printf("\tThe address that is relative to the image base of the beginning-of-data section: %x\n", optional_header->BaseOfData);
+    //printf("\tThe address that is relative to the image base of the beginning-of-data section: %x\n", optional_header->BaseOfData); - Only for 32 bits
     printf("\tThe preferred address of the first byte of image when loaded into memory(Image Base) %x\n", optional_header->ImageBase);
     printf("\tThe alignment (in bytes) of sections: %x\n", optional_header->SectionAlignment);
     printf("\tThe alignment factor (in bytes): %x\n", optional_header->FileAlignment);
@@ -142,6 +141,7 @@ DWORD PEHeader_(wstring s) {
 
             import_section = section_header;
         }
+
         //section_header += (DWORD)sizeof(PIMAGE_SECTION_HEADER);
     }
 
@@ -167,9 +167,55 @@ DWORD PEHeader_(wstring s) {
             }
         }
     }
-    return h_File;
+
+    CloseHandle(h_File);
+
+    return 1;
 }
 
+// .rsrc function ------->
+int rsrc_data(wstring s) {
+    std::wstring userinput = s;
+    
+
+    HANDLE h_File = CreateFileW(s.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); 
+
+    if (!h_File) {
+        printf("\nERROR : Could not open the file specified!!!\n");
+    }
+
+    //Mapping Given EXE file to Memory
+    HANDLE hMapObject = CreateFileMapping(h_File, NULL, PAGE_READONLY, 0, 0, NULL);
+    LPVOID basepointer = (char*)MapViewOfFile(hMapObject, FILE_MAP_READ, 0, 0, 0);
+
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)basepointer;
+    PIMAGE_NT_HEADERS nt_header = (PIMAGE_NT_HEADERS)((DWORD)basepointer + dos_header->e_lfanew);
+
+    PIMAGE_SECTION_HEADER section_header = (PIMAGE_SECTION_HEADER)((DWORD)basepointer + dos_header->e_lfanew + sizeof(nt_header->Signature) + sizeof(nt_header->FileHeader) + sizeof(nt_header->OptionalHeader));
+    
+
+    for (int i = 0; i <= nt_header->FileHeader.NumberOfSections; i++) {
+       
+        if (strcmp((char*)section_header[i].Name, ".rsrc") == 1)
+        {
+            cout << "\n[+] Found the .rsrc Section with Data\n";
+
+            void* rsrc_parser = malloc(section_header[i].SizeOfRawData);
+            SetFilePointer(h_File, section_header[i].PointerToRawData, NULL, 0);
+            ReadFile(h_File, rsrc_parser, section_header[i].SizeOfRawData, NULL, NULL);
+            
+            
+            break;
+        }
+        else {
+            printf(".rsrc section not found in memory");
+            
+        }
+    }
+
+    CloseHandle(h_File);
+    return 0;
+}
 int main() {
     
     wstring s = L"";
@@ -178,7 +224,8 @@ int main() {
     
     std::wcout << "[ ] Options: \n"; 
     std::wcout << "[1] PE Headers in Verbose Mode \n";
-    std::wcout << "[2] Coming Soon....... \n";
+    std::wcout << "[2] .RSRC Section Data \n";
+    std::wcout << "[3] Coming Soon....... \n";
 
     int op; 
     std::cin >> op; 
@@ -188,6 +235,8 @@ int main() {
         case 1:
             PEHeader_(s);
         case 2:
+            rsrc_data(s);
+        case 3:
             cout << "Coming Soon...";
         }
     
